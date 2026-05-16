@@ -1,7 +1,7 @@
 # xoibot
 
 Бот для управления подключениями к xui панели
-
+Telegram bot for managing 3x-ui VPN connections with inline keyboard support, user access requests, and anti-flood protection
 ## Установка
 
 ```bash
