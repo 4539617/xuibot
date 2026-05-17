@@ -44,21 +44,21 @@ Telegram bot for managing 3x-ui panel connections with support for multiple tran
 
 # Installation
 
-**Clone the repository**
+*Clone the repository*
 ```bash
 git clone https://github.com/4539617/xuibot.git /opt/xuibot
 cd /opt/xuibot
 ```
-**Configure environment**
+*Configure environment*
 ```bash
 nano .env
 ```
-**Run installer**
+*Run installer*
 ```bash
 chmod +x install.sh
 sudo ./install.sh
 ```
-**Check logs**
+*Check logs*
 ```bash
 docker logs -f xuibot
 ```
@@ -89,6 +89,7 @@ cd /opt/xuibot && sudo ./install.sh
 
 
 # Reinstall with other transport
+*Delete container*
 ```bash
 cd /opt/xuibot
 docker rm -f xuibot
