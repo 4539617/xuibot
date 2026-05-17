@@ -16,7 +16,7 @@ Telegram bot for managing 3x-ui panel connections with support for multiple tran
 - 👑 **Admin Commands** - User management, blocking, removal
 - 🛡️ **Anti-Flood Protection** - Limits message frequency from unauthorized users
 - 🐳 **Docker Deployment** - Easy setup with Docker
-- 🔄 **Multiple Transport Support** - TCP, xHTTP, gRPC, WebSocket
+- 🔄 **Multiple Transport Support** - TCP, xHTTP
 - 🔒 **Multiple Security Types** - TLS, Reality
 
 ## 📋 Commands
