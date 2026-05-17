@@ -63,19 +63,6 @@ sudo ./install.sh
 docker logs -f xuibot
 ```
 
-**Reinstall with other transport**
-```bash
-cd /opt/xuibot
-docker rm -f xuibot
-```
-*Configure environment*
-```bash
-nano .env
-```
-*Run after configuring*
-```bash
-sudo ./install.sh
-```
 
 ### Management Commands
 # View logs
@@ -98,5 +85,23 @@ docker start xuibot
 ```bash
 cd /opt/xuibot && sudo ./install.sh
 ```
+
+
+
+**Reinstall with other transport**
+```bash
+cd /opt/xuibot
+docker rm -f xuibot
+```
+*Configure environment*
+```bash
+nano .env
+```
+*Run after configuring*
+```bash
+sudo ./install.sh
+```
+
+
 
 
