@@ -67,6 +67,8 @@ docker logs -f xuibot
 ```bash
 cd /opt/xuibot
 docker rm -f xuibot
+```
+*Configure environment*
 ```bash
 nano .env
 ```
