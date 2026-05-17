@@ -99,9 +99,9 @@ class LimitsConfig:
     def from_env(cls):
         return cls(
             max_traffic_gb=int(os.getenv("MAX_TRAFFIC_GB", "1000")),
-            max_days=int(os.getenv("MAX_DAYS", "365")),
+            max_days=int(os.getenv("MAX_DAYS", "3650")),
             min_days=int(os.getenv("MIN_DAYS", "1")),
-            default_traffic_gb=int(os.getenv("DEFAULT_TRAFFIC_GB", "100")),
+            default_traffic_gb=int(os.getenv("DEFAULT_TRAFFIC_GB", "1000")),
             default_days=int(os.getenv("DEFAULT_DAYS", "30"))
         )
 
