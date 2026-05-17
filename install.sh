@@ -1,5 +1,5 @@
 #!/bin/bash
-# install.sh - установщик бота
+# install.sh - установщик бота (без запроса данных, только из .env)
 
 set -e
 
@@ -30,79 +30,37 @@ fi
 
 # Создаём директорию для бота
 mkdir -p /opt/3xui-bot/{logs,data}
-cd /opt/3xui-bot
 
-# Проверяем наличие .env файла
-if [ -f ".env" ]; then
-    echo -e "${GREEN}✅ Найден существующий .env файл${NC}"
-    echo -e "${YELLOW}Использую данные из .env${NC}"
-else
-    echo -e "\n${BLUE}📝 Введите данные для настройки:${NC}\n"
-    
-    # Запрос данных с проверкой на пустоту
-    while [ -z "$BOT_TOKEN" ]; do
-        read -p "BOT_TOKEN (получите у @BotFather): " BOT_TOKEN
-    done
-    
-    while [ -z "$ADMIN_IDS" ]; do
-        read -p "ADMIN_IDS (ваш Telegram ID): " ADMIN_IDS
-    done
-    
-    read -p "ADMIN_USERNAME (опционально, например @username): " ADMIN_USERNAME
-    
-    while [ -z "$XUI_URL" ]; do
-        read -p "XUI_URL (полный URL панели): " XUI_URL
-    done
-    
-    while [ -z "$XUI_USERNAME" ]; do
-        read -p "XUI_USERNAME (логин панели): " XUI_USERNAME
-    done
-    
-    while [ -z "$XUI_PASSWORD" ]; do
-        read -p "XUI_PASSWORD (пароль панели): " XUI_PASSWORD
-    done
-    
-    read -p "INBOUND_ID (ID входящего подключения) [1]: " INBOUND_ID
-    INBOUND_ID=${INBOUND_ID:-1}
-    
-    while [ -z "$SERVER_ADDRESS" ]; do
-        read -p "SERVER_ADDRESS (IP или домен сервера): " SERVER_ADDRESS
-    done
-    
-    # Создаём .env файл
-    cat > .env << EOF
-BOT_TOKEN=${BOT_TOKEN}
-ADMIN_IDS=${ADMIN_IDS}
-ADMIN_USERNAME=${ADMIN_USERNAME}
-XUI_URL=${XUI_URL}
-XUI_USERNAME=${XUI_USERNAME}
-XUI_PASSWORD=${XUI_PASSWORD}
-INBOUND_ID=${INBOUND_ID}
-SERVER_ADDRESS=${SERVER_ADDRESS}
-SERVER_PORT=443
-SECURITY=tls
-SNI=yahoo.com
-FINGERPRINT=chrome
-MAX_TRAFFIC_GB=1000
-MAX_DAYS=3650
-MIN_DAYS=1
-DEFAULT_TRAFFIC_GB=100
-DEFAULT_DAYS=30
-EOF
-    
-    echo -e "${GREEN}✅ .env файл создан${NC}"
+# Проверяем наличие .env файла в текущей директории
+if [ ! -f ".env" ]; then
+    echo -e "${RED}❌ Файл .env не найден в текущей директории!${NC}"
+    echo -e "${YELLOW}Скопируйте .env.example в .env и заполните его${NC}"
+    exit 1
 fi
 
-# Копируем файлы бота из репозитория
+# Копируем .env в директорию бота
+cp -f .env /opt/3xui-bot/.env
+echo -e "${GREEN}✅ .env файл скопирован${NC}"
+
+# Копируем файлы бота
 echo -e "${YELLOW}📥 Копирование файлов бота...${NC}"
-if [ -d "/opt/xuibot" ]; then
+
+# Определяем источник файлов
+if [ -f "bot.py" ] && [ -f "config.py" ] && [ -f "utils.py" ]; then
+    # Файлы в текущей директории
+    cp -f bot.py config.py utils.py requirements.txt Dockerfile docker-compose.yml /opt/3xui-bot/ 2>/dev/null
+    echo -e "${GREEN}✅ Файлы скопированы из текущей директории${NC}"
+elif [ -d "/opt/xuibot" ]; then
+    # Файлы из клонированного репозитория
     cp -f /opt/xuibot/bot.py /opt/xuibot/config.py /opt/xuibot/utils.py /opt/xuibot/requirements.txt /opt/xuibot/Dockerfile /opt/xuibot/docker-compose.yml /opt/3xui-bot/ 2>/dev/null
     echo -e "${GREEN}✅ Файлы скопированы из /opt/xuibot${NC}"
 else
-    echo -e "${RED}❌ Директория /opt/xuibot не найдена!${NC}"
-    echo -e "${YELLOW}Убедитесь, что файлы бота доступны${NC}"
+    echo -e "${RED}❌ Не найдены файлы бота!${NC}"
     exit 1
 fi
+
+# Переходим в директорию бота
+cd /opt/3xui-bot
 
 # Запуск бота
 echo -e "${YELLOW}🐳 Запуск Docker контейнера...${NC}"
