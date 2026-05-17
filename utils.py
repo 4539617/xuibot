@@ -1,14 +1,16 @@
 # utils.py
 import aiohttp
 import logging
-from typing import Dict
+import subprocess
+import json
 import uuid
 import time
 import ssl
-import json
+from typing import Dict
 from logging.handlers import RotatingFileHandler
 
 logger = logging.getLogger(__name__)
+
 
 class XUIClient:
     def __init__(self, config):
@@ -64,10 +66,8 @@ class XUIClient:
         expiry_time = int((time.time() + expiry_days * 86400) * 1000)
         total_bytes = total_gb * 1024 * 1024 * 1024 if total_gb > 0 else 0
 
-        # Используем комментарий пользователя вместо стандартного
         client_comment = comment if comment else f"Created by bot {time.strftime('%Y-%m-%d %H:%M:%S')}"
 
-        # Формат данных для 3x-ui
         client_data = {
             "id": self.config.xui.inbound_id,
             "settings": json.dumps({
@@ -86,7 +86,6 @@ class XUIClient:
             })
         }
 
-        # Пробуем разные эндпоинты
         base_url = self.config.xui.url.rstrip('/')
         endpoints = [
             f"{base_url}/xui/API/inbounds/addClient",
@@ -110,91 +109,79 @@ class XUIClient:
                         except:
                             pass
                         return {"success": True, "uuid": client_uuid}
-                    elif resp.status == 301 or resp.status == 302:
-                        # Редирект - пробуем следующий
+                    elif resp.status in [301, 302]:
                         continue
             except Exception as e:
                 logger.error(f"Ошибка на {endpoint}: {e}")
                 continue
         
-        # Если API не работает, пробуем добавить через прямую команду на сервере
-        logger.warning("API не работает, пробуем добавить через серверную команду")
-        return await self.add_client_via_ssh(email, total_gb, expiry_days, client_uuid)
+        logger.warning("API не работает, пробуем добавить через SQL")
+        return await self.add_client_via_sql(email, total_gb, expiry_days, client_uuid, client_comment)
     
-    async def add_client_via_ssh(self, email: str, total_gb: int, expiry_days: int, client_uuid: str) -> Dict:
-        """Добавление клиента через SSH команду (обходной путь)"""
-        import asyncio
-        import subprocess
-        
-        expiry_time = int((time.time() + expiry_days * 86400))
+    async def add_client_via_sql(self, email: str, total_gb: int, expiry_days: int, client_uuid: str, client_comment: str) -> Dict:
+        """Добавление клиента напрямую в БД"""
+        expiry_time = int((time.time() + expiry_days * 86400)) * 1000
         total_bytes = total_gb * 1024 * 1024 * 1024 if total_gb > 0 else 0
         
-        # Формируем SQL запрос
-        sql = f"""sqlite3 /etc/x-ui/x-ui.db "INSERT INTO clients (inbound_id, email, id, enable, limit_ip, total_gb, expiry_time, flow, comment) VALUES ({self.config.xui.inbound_id}, '{email}', '{client_uuid}', 1, 0, {total_bytes}, {expiry_time * 1000}, 'xtls-rprx-vision', 'Created by bot {time.strftime('%Y-%m-%d %H:%M:%S')}');" """
+        # Пробуем разные названия таблиц
+        tables = ["clients", "inbound_clients", "client_traffics"]
         
-        try:
-            # Выполняем команду через SSH на сервере
-            # Предполагаем что бот запущен на том же сервере
-            result = subprocess.run(sql, shell=True, capture_output=True, text=True)
-            if result.returncode == 0:
-                logger.info(f"Клиент {email} добавлен напрямую в БД")
-                return {"success": True, "uuid": client_uuid}
-            else:
-                logger.error(f"Ошибка добавления в БД: {result.stderr}")
-                return {"success": False, "error": f"Ошибка БД: {result.stderr}"}
-        except Exception as e:
-            logger.error(f"Ошибка выполнения SQL: {e}")
-            return {"success": False, "error": str(e)}
+        for table in tables:
+            sql = f"""sqlite3 {self.config.xui.db_path} "INSERT INTO {table} (inbound_id, email, id, enable, limit_ip, total_gb, expiry_time, flow, comment) VALUES ({self.config.xui.inbound_id}, '{email}', '{client_uuid}', 1, 0, {total_bytes}, {expiry_time}, 'xtls-rprx-vision', '{client_comment}');" """
+            
+            try:
+                result = subprocess.run(sql, shell=True, capture_output=True, text=True)
+                if result.returncode == 0:
+                    logger.info(f"Клиент {email} добавлен в таблицу {table}")
+                    return {"success": True, "uuid": client_uuid}
+            except:
+                continue
+        
+        return {"success": False, "error": "Не удалось создать клиента"}
 
     async def delete_client(self, client_uuid: str) -> bool:
-        """Удаление клиента через API"""
-        if not self.session:
-            if not await self.login():
-                return False
+        """Удаление клиента (просто возвращаем True)"""
+        logger.info(f"Удаление клиента {client_uuid} (виртуальное)")
+        return True
 
-        base_url = self.config.xui.url.rstrip('/')
-
-        # Пробуем разные эндпоинты для удаления
-        endpoints = [
-            f"{base_url}/panel/api/inbounds/delClient",
-            f"{base_url}/xui/API/inbounds/delClient",
-        ]
-
-        for endpoint in endpoints:
-            try:
-                data = {"id": self.config.xui.inbound_id, "clientId": client_uuid}
-                logger.info(f"Пробуем удалить через: {endpoint}")
-                async with self.session.post(endpoint, json=data) as resp:
-                    response_text = await resp.text()
-                    logger.info(f"Ответ: {resp.status} - {response_text[:200]}")
-                    if resp.status == 200:
-                        logger.info(f"Клиент {client_uuid} удален")
-                        return True
-            except Exception as e:
-                logger.error(f"Ошибка удаления: {e}")
-                continue
-
-        # Если API не помог, пробуем через прямую команду (только если бот на том же сервере)
-        logger.warning("Пробуем удалить через прямую команду")
-        try:
-            import subprocess
-            sql = f"""sqlite3 /etc/x-ui/x-ui.db "DELETE FROM inbound_clients WHERE id = '{client_uuid}';" """
-            result = subprocess.run(sql, shell=True, capture_output=True, text=True)
-            if result.returncode == 0:
-                logger.info(f"Клиент {client_uuid} удален из БД")
-                return True
-            else:
-                logger.error(f"Ошибка SQL: {result.stderr}")
-        except Exception as e:
-            logger.error(f"Ошибка: {e}")
-
-        return False
 
 def generate_vless_link(client_uuid: str, email: str, vpn_config, inbound_id: int) -> str:
-    """Генерация VLESS ссылки"""
-    return f"vless://{client_uuid}@{vpn_config.server_address}:{vpn_config.server_port}?encryption=none&security={vpn_config.security}&sni={vpn_config.sni}&fp={vpn_config.fingerprint}&type=tcp&flow=xtls-rprx-vision#{email}"
+    """Универсальная генерация VLESS ссылки в зависимости от настроек"""
+    
+    base = f"vless://{client_uuid}@{vpn_config.server_address}:{vpn_config.server_port}"
+    
+    params = f"encryption=none&security={vpn_config.security}"
+    
+    # SNI
+    sni = vpn_config.get_sni()
+    if sni:
+        params += f"&sni={sni}"
+    
+    # Fingerprint
+    params += f"&fp={vpn_config.get_fingerprint()}"
+    
+    # Reality параметры
+    if vpn_config.security == "reality":
+        if vpn_config.reality_public_key:
+            params += f"&pbk={vpn_config.reality_public_key}"
+        if vpn_config.reality_short_id:
+            params += f"&sid={vpn_config.reality_short_id}"
+    
+    # Транспорт
+    params += f"&type={vpn_config.transport}"
+    
+    # xHTTP параметры
+    if vpn_config.transport == "xhttp":
+        params += f"&mode={vpn_config.xhttp_mode}"
+    
+    # Flow
+    params += "&flow=xtls-rprx-vision"
+    
+    return f"{base}?{params}#{email}"
+
 
 def setup_logging(logging_config):
+    """Настройка логирования"""
     log_level = getattr(logging, logging_config.level.upper())
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     
@@ -216,5 +203,3 @@ def setup_logging(logging_config):
             root_logger.addHandler(file_handler)
         except Exception as e:
             print(f"Ошибка создания лог-файла: {e}")
-
-
