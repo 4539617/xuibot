@@ -103,6 +103,15 @@ nano .env
 sudo ./install.sh
 ```
 
-
+# Сomplete delete
+```bash
+docker rm -f xuibot
+```
+```bash
+docker rmi xuibot
+```
+```bash
+rm -rf /opt/xuibot
+```
 
 
