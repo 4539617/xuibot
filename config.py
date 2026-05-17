@@ -1,3 +1,4 @@
+# config.py
 import os
 from dotenv import load_dotenv
 from dataclasses import dataclass
@@ -49,23 +50,41 @@ class XUIConfig:
 class VPNConfig:
     server_address: str
     server_port: int
-    security: str = "reality"
-    sni: str = "google.com"
-    fingerprint: str = "firefox"
-    public_key: str = ""
-    short_id: str = ""
+    transport: str = "tcp"
+    security: str = "tls"
+    tls_sni: str = ""
+    tls_fingerprint: str = "chrome"
+    reality_sni: str = ""
+    reality_fingerprint: str = "chrome"
+    reality_public_key: str = ""
+    reality_short_id: str = ""
+    xhttp_mode: str = "auto"
 
     @classmethod
     def from_env(cls):
         return cls(
             server_address=os.getenv("SERVER_ADDRESS", ""),
             server_port=int(os.getenv("SERVER_PORT", "443")),
-            security=os.getenv("SECURITY", "reality"),
-            sni=os.getenv("SNI", "yahoo.com"),
-            fingerprint=os.getenv("FINGERPRINT", "chrome"),
-            public_key=os.getenv("REALITY_PUBLIC_KEY", ""),
-            short_id=os.getenv("REALITY_SHORT_ID", "")
+            transport=os.getenv("TRANSPORT", "tcp"),
+            security=os.getenv("SECURITY", "tls"),
+            tls_sni=os.getenv("TLS_SNI", ""),
+            tls_fingerprint=os.getenv("TLS_FINGERPRINT", "chrome"),
+            reality_sni=os.getenv("REALITY_SNI", ""),
+            reality_fingerprint=os.getenv("REALITY_FINGERPRINT", "chrome"),
+            reality_public_key=os.getenv("REALITY_PUBLIC_KEY", ""),
+            reality_short_id=os.getenv("REALITY_SHORT_ID", ""),
+            xhttp_mode=os.getenv("XHTTP_MODE", "auto")
         )
+    
+    def get_sni(self) -> str:
+        if self.security == "tls":
+            return self.tls_sni
+        return self.reality_sni
+    
+    def get_fingerprint(self) -> str:
+        if self.security == "tls":
+            return self.tls_fingerprint
+        return self.reality_fingerprint
 
 
 @dataclass
@@ -219,7 +238,6 @@ class UserDatabase:
             return False
 
     def delete_user_client(self, client_id: int) -> bool:
-        """Удаление клиента из локальной БД"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute("DELETE FROM user_clients WHERE id = ?", (client_id,))
@@ -255,13 +273,6 @@ class UserDatabase:
     def block_user(self, user_id: int, blocked_by: int) -> bool:
         try:
             with sqlite3.connect(self.db_path) as conn:
-                conn.execute("""
-                    CREATE TABLE IF NOT EXISTS blocked_users (
-                        user_id INTEGER PRIMARY KEY,
-                        blocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        blocked_by INTEGER
-                    )
-                """)
                 conn.execute(
                     "INSERT OR REPLACE INTO blocked_users (user_id, blocked_by) VALUES (?, ?)",
                     (user_id, blocked_by)
@@ -304,6 +315,11 @@ class Config:
             raise ValueError("XUI_PASSWORD не указан")
         if not self.vpn.server_address or self.vpn.server_address == "your-domain.com":
             raise ValueError("SERVER_ADDRESS не указан")
+        if self.vpn.security == "reality":
+            if not self.vpn.reality_public_key:
+                print("⚠️ REALITY_PUBLIC_KEY не указан, проверьте настройки")
+            if not self.vpn.reality_short_id:
+                print("⚠️ REALITY_SHORT_ID не указан, проверьте настройки")
 
     def is_admin(self, user_id: int) -> bool:
         return user_id == self.users_db.get_main_admin()
@@ -328,6 +344,9 @@ class Config:
 <b>VPN Settings:</b>
 • Server: {self.vpn.server_address}:{self.vpn.server_port}
 • Security: {self.vpn.security}
+• Transport: {self.vpn.transport}
+• SNI: {self.vpn.get_sni()}
+• Fingerprint: {self.vpn.get_fingerprint()}
 
 <b>Limits:</b>
 • Max Traffic: {self.limits.max_traffic_gb} GB
