@@ -72,6 +72,7 @@ docker rm -f xuibot
 ```bash
 nano .env
 ```
+*Run after configuring*
 ```bash
 sudo ./install.sh
 ```
