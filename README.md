@@ -42,7 +42,7 @@ Telegram bot for managing 3x-ui panel connections with support for multiple tran
 ### Prerequisites
 - 3x-ui panel installed on your server
 
-### Installation
+# Installation
 
 **Clone the repository**
 ```bash
@@ -64,31 +64,31 @@ docker logs -f xuibot
 ```
 
 
-### Management Commands
-# View logs
+# Management Commands
+*View logs*
 ```bash
 docker logs -f xuibot
 ```
-# Restart bot
+*Restart bot*
 ```bash
 docker restart xuibot
 ```
-# Stop bot
+*Stop bot*
 ```bash
 docker stop xuibot
 ```
-# Start bot
+*Start bot*
 ```bash
 docker start xuibot
 ```
-# Reinstall
+*Reinstall*
 ```bash
 cd /opt/xuibot && sudo ./install.sh
 ```
 
 
 
-**Reinstall with other transport**
+# Reinstall with other transport
 ```bash
 cd /opt/xuibot
 docker rm -f xuibot
