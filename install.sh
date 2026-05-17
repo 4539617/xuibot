@@ -1,7 +1,3 @@
-
-### 3. `install.sh` (установщик):
-
-```bash
 #!/bin/bash
 # install.sh - установщик бота
 
@@ -48,7 +44,7 @@ read -p "SERVER_ADDRESS: " SERVER_ADDRESS
 mkdir -p /opt/3xui-bot
 cd /opt/3xui-bot
 
-cat > .env << EOF
+cat > .env << EOF2
 BOT_TOKEN=${BOT_TOKEN}
 ADMIN_IDS=${ADMIN_IDS}
 ADMIN_USERNAME=${ADMIN_USERNAME}
@@ -59,19 +55,20 @@ INBOUND_ID=${INBOUND_ID}
 SERVER_ADDRESS=${SERVER_ADDRESS}
 SERVER_PORT=443
 SECURITY=tls
-SNI=google.com
-FINGERPRINT=firefox
+SNI=yahoo.com
+FINGERPRINT=chrome
 MAX_TRAFFIC_GB=1000
 MAX_DAYS=3650
 MIN_DAYS=1
 DEFAULT_TRAFFIC_GB=100
 DEFAULT_DAYS=30
-EOF
+EOF2
 
 # Копирование файлов бота (из текущей директории)
-cp -f bot.py config.py utils.py requirements.txt Dockerfile docker-compose.yml /opt/3xui-bot/ 2>/dev/null
+cp -f /opt/xuibot/bot.py /opt/xuibot/config.py /opt/xuibot/utils.py /opt/xuibot/requirements.txt /opt/xuibot/Dockerfile /opt/xuibot/docker-compose.yml /opt/3xui-bot/ 2>/dev/null
 
 # Запуск
+cd /opt/3xui-bot
 docker build -t 3xui-bot .
 docker run -d --name 3xui-bot --restart always --network host --env-file .env \
   -v ./logs:/app/logs -v ./data:/app/data \
