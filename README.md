@@ -1,4 +1,4 @@
-# Xuibot - Telegram Bot for 3x-ui Management
+# Xuibot - Telegram Bot for 3x-ui Panel Management
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=flat&logo=docker&logoColor=white)](https://docker.com)
