@@ -578,7 +578,7 @@ async def handle_unknown(message: Message):
     user_id = message.from_user.id
 
     if is_blocked_by_admin(user_id):
-        await message.answer("⛔ Вы заблокированы администратором. Обратитесь к администратору.")
+        await message.answer("⛔ Вы заблокированы администратором.")
         return
 
     if is_flood_blocked(user_id):
