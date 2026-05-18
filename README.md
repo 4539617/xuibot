@@ -11,6 +11,7 @@ Telegram bot for managing 3x-ui panel connections with support for multiple tran
 
 - 🔐 **User Access Request System** - Users request access, admin approves/denies
 - 📝 **Create Keys with Comments** - Custom comments for each connection
+- 👥 **User-Key Tracking** - See in panel which Telegram user owns which key
 - 📋 **List Your Keys** - View all your active keys with creation dates
 - 🔑 **QR Code Generation** - Easy setup with QR codes
 - 👑 **Admin Commands** - User management, blocking, removal
