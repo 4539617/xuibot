@@ -25,7 +25,7 @@ Telegram bot for managing 3x-ui panel connections with support for multiple tran
 | Command | Description |
 |---------|-------------|
 | `/start` | Start the bot |
-| `/new` | Create a new VPN key |
+| `/new` | Create a new key |
 | `/myclients` | List your keys |
 | `/help` | Show help |
 
