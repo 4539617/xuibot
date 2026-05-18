@@ -50,7 +50,7 @@ ADMIN_IDS=your_telegram_id
 ADMIN_USERNAME=@username
 
 # X-UI Panel
-XUI_URL=https://localhost:61066/your-path
+XUI_URL=https://localhost:12345/your-path
 XUI_USERNAME=admin
 XUI_PASSWORD=password
 INBOUND_ID=1
