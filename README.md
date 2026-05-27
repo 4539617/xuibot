@@ -20,7 +20,7 @@ Telegram bot for managing 3x-ui panel connections with support for multiple tran
 - 🛡️ **Anti-Flood Protection** - Limits message frequency from unauthorized users
 - 🐳 **Docker Deployment** - Easy setup with Docker
 - 🔄 **Multiple Transport Support** - TCP, xHTTP
-- 🔒 **Multiple Security Types** - TLS (with ALPN support), Reality
+- 🔒 **Multiple Security Types** - TLS, Reality
 - 📊 **Traffic Statistics** - View traffic usage for each key and total consumption
 - 🔄 **Auto User Detection** - Automatically adds users with active keys back to the system
 
@@ -123,52 +123,6 @@ cd /opt/xuibot
 ```bash
 nano .env
 ```
-
-### 📝 Environment Variables
-
-**Required:**
-- `BOT_TOKEN` - Telegram bot token from @BotFather
-- `ADMIN_IDS` - Your Telegram user ID (comma-separated for multiple admins)
-- `XUI_URL` - 3x-ui panel URL (e.g., https://localhost:12345/path)
-- `XUI_USERNAME` - 3x-ui panel username
-- `XUI_PASSWORD` - 3x-ui panel password
-- `INBOUND_ID` - Inbound ID from 3x-ui panel
-- `SERVER_ADDRESS` - Your VPN server domain/IP
-- `SERVER_PORT` - VPN server port (default: 443)
-
-**Transport & Security:**
-- `TRANSPORT` - Transport protocol: `tcp` or `xhttp` (default: tcp)
-- `SECURITY` - Security type: `tls` or `reality` (default: tls)
-
-**TLS Settings (when SECURITY=tls):**
-- `TLS_SNI` - Server Name Indication (your domain)
-- `TLS_FINGERPRINT` - Browser fingerprint: `chrome`, `firefox`, `safari`, `edge` (default: chrome)
-- `TLS_ALPN` - Application-Layer Protocol Negotiation (default: http/1.1) ⚠️ **Required for TCP+TLS**
-
-**Reality Settings (when SECURITY=reality):**
-- `REALITY_SNI` - Target SNI (e.g., google.com)
-- `REALITY_FINGERPRINT` - Browser fingerprint (default: chrome)
-- `REALITY_PUBLIC_KEY` - Reality public key from server
-- `REALITY_SHORT_ID` - Reality short ID from server
-
-**xHTTP Settings (when TRANSPORT=xhttp):**
-- `XHTTP_MODE` - xHTTP mode: `auto`, `packet-up`, `stream-up` (default: auto)
-
-**Optional:**
-- `ADMIN_USERNAME` - Admin Telegram username for display
-- `MAX_TRAFFIC_GB` - Maximum traffic limit in GB (default: 1000)
-- `MAX_DAYS` - Maximum validity period in days (default: 3650)
-- `DEFAULT_TRAFFIC_GB` - Default traffic for new keys (default: 1000)
-- `DEFAULT_DAYS` - Default validity period (default: 30)
-
-### ⚠️ Important: ALPN for TCP+TLS
-
-When using `TRANSPORT=tcp` with `SECURITY=tls`, the `TLS_ALPN` parameter is **required** for proper connection functionality. The default value is `http/1.1`, which works with most configurations. If connections fail, ensure this parameter is set in your `.env` file:
-
-```env
-TLS_ALPN=http/1.1
-```
-
 *Run installer*
 ```bash
 chmod +x install.sh
