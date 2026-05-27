@@ -10,33 +10,102 @@ Telegram bot for managing 3x-ui panel connections with support for multiple tran
 ## ✨ Features
 
 - 🔐 **User Access Request System** - Users request access, admin approves/denies
+- ⏰ **Temporary Keys** - Issue time-limited keys (1 hour, 1 day, 3 days, 7 days, 30 days) via admin approval or `/tempkey` command
+- 🧹 **Manual Cleanup** - Admin can manually clean up expired keys via /allclients command
 - 📝 **Create Keys with Comments** - Custom comments for each connection
 - 👥 **User-Key Tracking** - See in panel which Telegram user owns which key
-- 📋 **List Your Keys** - View all your active keys with creation dates
+- 📋 **List Your Keys** - View all your active keys with status and traffic usage
 - 🔑 **QR Code Generation** - Easy setup with QR codes
 - 👑 **Admin Commands** - User management, blocking, removal
 - 🛡️ **Anti-Flood Protection** - Limits message frequency from unauthorized users
 - 🐳 **Docker Deployment** - Easy setup with Docker
 - 🔄 **Multiple Transport Support** - TCP, xHTTP
-- 🔒 **Multiple Security Types** - TLS, Reality
+- 🔒 **Multiple Security Types** - TLS (with ALPN support), Reality
+- 📊 **Traffic Statistics** - View traffic usage for each key and total consumption
+- 🔄 **Auto User Detection** - Automatically adds users with active keys back to the system
 
 ## 📋 Commands
 
 ### 👤 User Commands
 | Command | Description |
 |---------|-------------|
-| `/start` | Start the bot |
-| `/new` | Create a new key |
-| `/myclients` | List your keys |
+| `/start` | Start the bot and check access |
+| `/new` | Create a new permanent key |
+| `/tempkey` | Create a temporary key (1h, 1d, 3d, 7d, 30d) |
+| `/myclients` | List your keys with status and traffic |
 | `/help` | Show help |
 
 ### 👑 Admin Commands
 | Command | Description |
 |---------|-------------|
+| `/allclients` | View all keys with traffic stats and cleanup expired ones |
 | `/users` | List all users |
 | `/blockuser` | Block a user |
 | `/unblockuser` | Unblock a user |
 | `/removeuser` | Remove a user |
+
+### 🎁 Temporary Keys Feature
+
+**Two ways to create temporary keys:**
+
+#### 1. Admin Approval (for new users)
+When a user requests access, admin can choose:
+- ✅ **Разрешить** - Grant permanent access (user can create unlimited keys)
+- 🕐 **Ключ на 1 час** - Issue a single key valid for 1 hour
+- 📅 **Ключ на 1 день** - Issue a single key valid for 1 day
+- 📅 **Ключ на 3 дня** - Issue a single key valid for 3 days
+- 📅 **Ключ на 7 дней** - Issue a single key valid for 7 days
+- 📅 **Ключ на 30 дней** - Issue a single key valid for 30 days
+- ❌ **Заблокировать** - Block the user
+
+**How it works:**
+1. User requests access via `/start`
+2. Admin receives notification with buttons
+3. Admin selects temporary key duration
+4. Bot creates key and sends it to user (QR code + text)
+5. Key expires automatically after specified time
+
+**Note:** Temporary keys issued this way don't grant user access to create more keys.
+
+#### 2. `/tempkey` Command (for authorized users)
+Authorized users and admins can create temporary keys themselves:
+1. Use `/tempkey` command
+2. Select duration from menu (1h, 1d, 3d, 7d, 30d)
+3. Enter comment for the key
+4. Receive QR code and key link
+5. Key expires automatically after specified time
+
+**Benefits:**
+- Users can create temporary keys for testing or short-term use
+- No need to contact admin for temporary access
+- Keys are automatically marked as temporary (`temp_username_random` format)
+- Expired temporary keys can be cleaned up manually
+
+### 🧹 Manual Cleanup
+Use `/allclients` command to:
+- View statistics (total, active, inactive, expired keys)
+- See total traffic consumption across all keys
+- View each key with its traffic usage (displayed in MB)
+- Manually cleanup all expired temporary keys with one click
+- Click "🧹 Очистить просроченные" button to remove all expired temporary keys
+
+### 📊 Traffic Statistics
+The bot now displays traffic usage:
+- **In `/allclients`**: Each key shows traffic consumption in MB (e.g., "✅ email - comment (10 MB)")
+- **Total statistics**: Shows combined traffic usage across all keys
+- **Auto-formatting**: Traffic is displayed in appropriate units (B/KB/MB/GB)
+
+### 🔄 Auto User Detection
+The bot automatically detects returning users:
+- When a user with active keys runs `/start`, they are automatically added back
+- Admin receives notification about returning users
+- User history is tracked in the database
+- No manual intervention needed for users with existing active keys
+
+### 🔐 Access Control
+- Users must run `/start` before using `/new` or `/myclients` commands
+- Clear error messages guide users to register first
+- Prevents unauthorized access attempts
 
 ## 🚀 Quick Start
 
@@ -54,6 +123,52 @@ cd /opt/xuibot
 ```bash
 nano .env
 ```
+
+### 📝 Environment Variables
+
+**Required:**
+- `BOT_TOKEN` - Telegram bot token from @BotFather
+- `ADMIN_IDS` - Your Telegram user ID (comma-separated for multiple admins)
+- `XUI_URL` - 3x-ui panel URL (e.g., https://localhost:12345/path)
+- `XUI_USERNAME` - 3x-ui panel username
+- `XUI_PASSWORD` - 3x-ui panel password
+- `INBOUND_ID` - Inbound ID from 3x-ui panel
+- `SERVER_ADDRESS` - Your VPN server domain/IP
+- `SERVER_PORT` - VPN server port (default: 443)
+
+**Transport & Security:**
+- `TRANSPORT` - Transport protocol: `tcp` or `xhttp` (default: tcp)
+- `SECURITY` - Security type: `tls` or `reality` (default: tls)
+
+**TLS Settings (when SECURITY=tls):**
+- `TLS_SNI` - Server Name Indication (your domain)
+- `TLS_FINGERPRINT` - Browser fingerprint: `chrome`, `firefox`, `safari`, `edge` (default: chrome)
+- `TLS_ALPN` - Application-Layer Protocol Negotiation (default: http/1.1) ⚠️ **Required for TCP+TLS**
+
+**Reality Settings (when SECURITY=reality):**
+- `REALITY_SNI` - Target SNI (e.g., google.com)
+- `REALITY_FINGERPRINT` - Browser fingerprint (default: chrome)
+- `REALITY_PUBLIC_KEY` - Reality public key from server
+- `REALITY_SHORT_ID` - Reality short ID from server
+
+**xHTTP Settings (when TRANSPORT=xhttp):**
+- `XHTTP_MODE` - xHTTP mode: `auto`, `packet-up`, `stream-up` (default: auto)
+
+**Optional:**
+- `ADMIN_USERNAME` - Admin Telegram username for display
+- `MAX_TRAFFIC_GB` - Maximum traffic limit in GB (default: 1000)
+- `MAX_DAYS` - Maximum validity period in days (default: 3650)
+- `DEFAULT_TRAFFIC_GB` - Default traffic for new keys (default: 1000)
+- `DEFAULT_DAYS` - Default validity period (default: 30)
+
+### ⚠️ Important: ALPN for TCP+TLS
+
+When using `TRANSPORT=tcp` with `SECURITY=tls`, the `TLS_ALPN` parameter is **required** for proper connection functionality. The default value is `http/1.1`, which works with most configurations. If connections fail, ensure this parameter is set in your `.env` file:
+
+```env
+TLS_ALPN=http/1.1
+```
+
 *Run installer*
 ```bash
 chmod +x install.sh
@@ -86,7 +201,10 @@ docker start xuibot
 ```bash
 cd /opt/xuibot && sudo ./install.sh
 ```
-
+*Rebuild the Docker image*
+```bash
+docker build -t xuibot .
+```
 
 
 # Reinstall with other transport
@@ -107,11 +225,7 @@ sudo ./install.sh
 # Сomplete delete
 ```bash
 docker rm -f xuibot
-```
-```bash
 docker rmi xuibot
-```
-```bash
 rm -rf /opt/xuibot
 ```
 

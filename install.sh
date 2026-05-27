@@ -66,6 +66,7 @@ SECURITY=tls
 # TLS (если SECURITY=tls)
 TLS_SNI=your-server.com
 TLS_FINGERPRINT=chrome
+TLS_ALPN=http/1.1
 
 # Reality (если SECURITY=reality)
 REALITY_SNI=google.com

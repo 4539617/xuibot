@@ -54,6 +54,7 @@ class VPNConfig:
     security: str = "tls"
     tls_sni: str = ""
     tls_fingerprint: str = "chrome"
+    tls_alpn: str = "http/1.1"
     reality_sni: str = ""
     reality_fingerprint: str = "chrome"
     reality_public_key: str = ""
@@ -69,6 +70,7 @@ class VPNConfig:
             security=os.getenv("SECURITY", "tls"),
             tls_sni=os.getenv("TLS_SNI", ""),
             tls_fingerprint=os.getenv("TLS_FINGERPRINT", "chrome"),
+            tls_alpn=os.getenv("TLS_ALPN", "http/1.1"),
             reality_sni=os.getenv("REALITY_SNI", ""),
             reality_fingerprint=os.getenv("REALITY_FINGERPRINT", "chrome"),
             reality_public_key=os.getenv("REALITY_PUBLIC_KEY", ""),
@@ -179,6 +181,13 @@ class UserDatabase:
                     blocked_by INTEGER
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS user_history (
+                    user_id INTEGER PRIMARY KEY,
+                    first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
             main_admin = self.get_main_admin()
             conn.execute("""
                 INSERT OR IGNORE INTO allowed_users (user_id, username, added_by) 
@@ -193,12 +202,28 @@ class UserDatabase:
             cursor = conn.execute("SELECT 1 FROM allowed_users WHERE user_id = ?", (user_id,))
             return cursor.fetchone() is not None
 
+    def was_user_registered(self, user_id: int) -> bool:
+        """Проверка был ли пользователь ранее зарегистрирован в системе"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute("SELECT 1 FROM user_history WHERE user_id = ?", (user_id,))
+            return cursor.fetchone() is not None
+    
     def add_user(self, user_id: int, username: str = None, added_by: int = None) -> bool:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute(
                     "INSERT OR REPLACE INTO allowed_users (user_id, username, added_by) VALUES (?, ?, ?)",
                     (user_id, username, added_by or self.get_main_admin())
+                )
+                # Добавляем в историю пользователей
+                conn.execute(
+                    "INSERT OR IGNORE INTO user_history (user_id) VALUES (?)",
+                    (user_id,)
+                )
+                # Обновляем last_seen
+                conn.execute(
+                    "UPDATE user_history SET last_seen = CURRENT_TIMESTAMP WHERE user_id = ?",
+                    (user_id,)
                 )
             return True
         except Exception as e:
