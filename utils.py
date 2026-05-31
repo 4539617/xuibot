@@ -153,32 +153,88 @@ class XUIClient:
         return await self.add_client_via_sql(email, total_gb, expiry_days, client_uuid, client_comment)
     
     async def add_client_via_sql(self, email: str, total_gb: int, expiry_days: float, client_uuid: str, client_comment: str) -> Dict:
-        """Добавление клиента напрямую в БД"""
-        expiry_time = int((time.time() + expiry_days * 86400) * 1000)
-        total_bytes = total_gb * 1024 * 1024 * 1024 if total_gb > 0 else 0
-        
-        # Определяем flow в зависимости от транспорта и безопасности
-        # Flow используется ТОЛЬКО для TCP с Reality или TLS
-        if self.config.vpn.transport == "tcp" and self.config.vpn.security in ["reality", "tls"]:
-            flow = "xtls-rprx-vision"
-        else:
-            flow = ""
-        
-        # Пробуем разные названия таблиц
-        tables = ["clients", "inbound_clients", "client_traffics"]
-        
-        for table in tables:
-            sql = f"""sqlite3 {self.config.xui.db_path} "INSERT INTO {table} (inbound_id, email, id, enable, limit_ip, total_gb, expiry_time, flow, comment) VALUES ({self.config.xui.inbound_id}, '{email}', '{client_uuid}', 1, 0, {total_bytes}, {expiry_time}, '{flow}', '{client_comment}');" """
+        """Добавление клиента напрямую в БД через обновление JSON в поле settings"""
+        try:
+            expiry_time = int((time.time() + expiry_days * 86400) * 1000)
+            total_bytes = total_gb * 1024 * 1024 * 1024 if total_gb > 0 else 0
+            
+            # Определяем flow в зависимости от транспорта и безопасности
+            # Flow используется ТОЛЬКО для TCP с Reality или TLS
+            if self.config.vpn.transport == "tcp" and self.config.vpn.security in ["reality", "tls"]:
+                flow = "xtls-rprx-vision"
+            else:
+                flow = ""
+            
+            # Валидация пути к БД
+            db_path = sanitize_path(self.config.xui.db_path)
+            
+            # Получаем текущие настройки inbound
+            sql_get = f"""sqlite3 {db_path} "SELECT settings FROM inbounds WHERE id={self.config.xui.inbound_id};" """
+            result = subprocess.run(sql_get, shell=True, capture_output=True, text=True)
+            
+            if result.returncode != 0 or not result.stdout:
+                logger.error(f"Не удалось получить настройки inbound id={self.config.xui.inbound_id}")
+                return {"success": False, "error": "Inbound не найден в базе данных"}
+            
+            # Парсим JSON
+            settings = json.loads(result.stdout.strip())
+            clients = settings.get('clients', [])
+            
+            # Создаем нового клиента
+            new_client = {
+                "id": client_uuid,
+                "email": email,
+                "limitIp": 0,
+                "totalGB": total_bytes,
+                "expiryTime": expiry_time,
+                "enable": True,
+                "flow": flow,
+                "tgId": "",
+                "subId": "",
+                "comment": client_comment,
+                "reset": 0,
+                "created_at": int(time.time() * 1000),
+                "updated_at": int(time.time() * 1000)
+            }
+            
+            # Добавляем клиента в список
+            clients.append(new_client)
+            settings['clients'] = clients
+            
+            # Сохраняем обновленные настройки через временный файл
+            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+                json.dump(settings, f, ensure_ascii=False)
+                temp_file = f.name
             
             try:
-                result = subprocess.run(sql, shell=True, capture_output=True, text=True)
+                # Обновляем настройки в БД
+                sql_update = f"""sqlite3 {db_path} "UPDATE inbounds SET settings=readfile('{temp_file}') WHERE id={self.config.xui.inbound_id};" """
+                result = subprocess.run(sql_update, shell=True, capture_output=True, text=True)
+                
                 if result.returncode == 0:
-                    logger.info(f"Клиент {email} добавлен в таблицу {table}")
+                    logger.info(f"Клиент {email} успешно добавлен в inbound id={self.config.xui.inbound_id} через SQL")
+                    
+                    # Также добавляем запись в client_traffics для отслеживания трафика
+                    sql_traffic = f"""sqlite3 {db_path} "INSERT OR IGNORE INTO client_traffics (inbound_id, enable, email, up, down, all_time, expiry_time, total, reset) VALUES ({self.config.xui.inbound_id}, 1, '{email}', 0, 0, 0, {expiry_time}, {total_bytes}, 0);" """
+                    subprocess.run(sql_traffic, shell=True, capture_output=True, text=True)
+                    
                     return {"success": True, "uuid": client_uuid}
-            except:
-                continue
-        
-        return {"success": False, "error": "Не удалось создать клиента"}
+                else:
+                    logger.error(f"Ошибка обновления настроек inbound: {result.stderr}")
+                    return {"success": False, "error": "Не удалось обновить настройки inbound"}
+            finally:
+                # Удаляем временный файл
+                try:
+                    os.unlink(temp_file)
+                except Exception as e:
+                    logger.warning(f"Не удалось удалить временный файл: {e}")
+                    
+        except json.JSONDecodeError as e:
+            logger.error(f"Ошибка парсинга JSON настроек inbound: {e}")
+            return {"success": False, "error": "Некорректный формат настроек inbound"}
+        except Exception as e:
+            logger.error(f"Ошибка добавления клиента через SQL: {e}")
+            return {"success": False, "error": f"Ошибка: {str(e)}"}
 
     async def delete_client(self, client_uuid: str, email: str = None) -> bool:
         """Удаление клиента через API или SQL"""
