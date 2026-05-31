@@ -612,9 +612,10 @@ def generate_vless_link(client_uuid: str, email: str, vpn_config, inbound_id: in
     params += f"&fp={vpn_config.get_fingerprint()}"
     
     # ALPN - для TLS обязательно указываем (URL-encoded)
-    if vpn_config.security == "tls" and vpn_config.tls_alpn:
+    tls_alpn = getattr(vpn_config, 'tls_alpn', 'http/1.1')
+    if vpn_config.security == "tls" and tls_alpn:
         # URL-encode ALPN (http/1.1 -> http%2F1.1)
-        alpn_encoded = urllib.parse.quote(vpn_config.tls_alpn, safe='')
+        alpn_encoded = urllib.parse.quote(tls_alpn, safe='')
         params += f"&alpn={alpn_encoded}"
     
     # Flow - только для TCP с Reality или TLS
@@ -629,16 +630,19 @@ def generate_vless_link(client_uuid: str, email: str, vpn_config, inbound_id: in
     
     # Reality параметры
     if vpn_config.security == "reality":
-        if vpn_config.reality_public_key:
-            params += f"&pbk={vpn_config.reality_public_key}"
-        if vpn_config.reality_short_id:
-            params += f"&sid={vpn_config.reality_short_id}"
+        reality_public_key = getattr(vpn_config, 'reality_public_key', '')
+        reality_short_id = getattr(vpn_config, 'reality_short_id', '')
+        if reality_public_key:
+            params += f"&pbk={reality_public_key}"
+        if reality_short_id:
+            params += f"&sid={reality_short_id}"
         # spiderX (SpiderX path)
         params += "&spx=%2F"
     
     # xHTTP параметры
     if vpn_config.transport == "xhttp":
-        params += f"&mode={vpn_config.xhttp_mode}"
+        xhttp_mode = getattr(vpn_config, 'xhttp_mode', 'auto')
+        params += f"&mode={xhttp_mode}"
         # Для xHTTP добавляем дополнительные параметры
         params += "&path=%2F&host="
         # xPaddingBytes для xHTTP
